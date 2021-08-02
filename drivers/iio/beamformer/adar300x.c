@@ -156,6 +156,12 @@
 #define ADAR300x_MAX_GAIN		31	/* dB */
 #define ADAR300x_MAX_PHASE		360	/* degree */
 
+enum adar300x_ADC_sel {
+	ADAR300x_ADC_ANALG0,
+	ADAR300x_ADC_ANLG1,
+	ADAR300x_ADC_TEMPERATURE,
+};
+
 enum adar300x_pages {
 	ADAR300x_CONFIG_PAGE,
 	ADAR300x_BEAM0H_PAGE,
@@ -164,8 +170,6 @@ enum adar300x_pages {
 	ADAR300x_BEAM1V_PAGE,
 	ADAR300x_FIFO_PAGE,
 };
-
-
 
 enum adar300x_update_intf_control {
 	ADAR300x_UPDATE_PIN_CONTROL,
@@ -177,8 +181,6 @@ static const char *const adar300x_update_intf_ctrl[] = {
 	[ADAR300x_UPDATE_SPI_CONTROL] = "SPI",
 };
 
-
-
 static const char *const adar300x_mode_ctrl[] = {
 	[ADAR300x_DIRECT_CTRL] = "direct",
 	[ADAR300x_MEMORY_CTRL] = "memory",
@@ -188,55 +190,11 @@ static const char *const adar300x_mode_ctrl[] = {
 	[ADAR300x_RESET] = "reset"
 };
 
-/* Beam state composed of 48 bits ADAR3000/3001/3002
- * For ADAR3003 only 24 bits are used */
-struct adar300x_beam_state {
-	u8 delay0 : 6;
-	u8 atten0 : 6;
-	u8 delay1 : 6;
-	u8 atten1 : 6;
-	u8 delay2 : 6;
-	u8 atten2 : 6;
-	u8 delay3 : 6;
-	u8 atten3 : 6;
-};
-
 static const struct regmap_config adar300x_regmap_config = {
 	.reg_bits = 16,
 	.val_bits = 8,
 	.read_flag_mask = BIT(7),
 };
-
-// static ssize_t adar300x_command(struct device *dev, u32 cmd, u8 len)
-// {
-// 	struct iio_dev *indio_dev = dev_to_iio_dev(dev);
-// 	struct adar300x_state *st = iio_priv(indio_dev);
-// 	struct spi_message m;
-// 	struct spi_transfer t = {0};
-// 	int ret;
-
-// 	/* Generate clock cycles to load new data from RAM */
-// 	t.tx_buf = cmd;
-// 	t.bits_per_word = 32;
-// 	t.len = len;
-
-// 	spi_message_init_with_transfers(&m, &t, 1);
-
-// 	ret = spi_sync_locked(st->spi, &m);
-
-// 	return ret ? ret : len;
-// }
-
-
-// static int adar300x_bulk_read(struct adar300x_state *st, u32 reg, u8 *val, size_t val_count)
-// {
-// 	return regmap_bulk_read(st->regmap, st->dev_addr | reg, val, val_count);
-// }
-
-// static int adar300x_bulk_write(struct adar300x_state *st, u32 reg, u8 *val, size_t val_count)
-// {
-// 	return regmap_bulk_write(st->regmap, st->dev_addr | reg, val, val_count);
-// }
 
 static int adar300x_reg_read(struct adar300x_state *st, u32 reg, u32 *val)
 {
@@ -258,7 +216,7 @@ static int adar300x_reg_update(struct adar300x_state *st, u32 reg, u32 mask, u32
 		return ret;
 
 	readval &= ~mask;
-	readval |= val;
+	readval |= (val & mask);
 
 	return adar300x_reg_write(st, reg, readval);
 }
@@ -273,6 +231,56 @@ static int adar300x_reg_access(struct iio_dev *indio_dev,
 		return adar300x_reg_read(st, reg, readval);
 	else
 		return adar300x_reg_write(st, reg, writeval);
+}
+
+static int adar300x_adc_read(struct adar300x_state *st, u32 *value)
+{
+	u32 val;
+	int ret;
+
+	ret = adar300x_reg_read(st, ADAR300x_REG_ADC_CONTROL2, &val);
+	if (ret < 0)
+		return ret;
+#ifdef DEBUG_ADAR300x
+	pr_err("adar300x_adc_read0 ch:%x", val);
+#endif // DEBUG_ADAR300x
+	val = (~val) & 0x01;
+#ifdef DEBUG_ADAR300x
+	pr_err("adar300x_adc_read1 ch:%x", val);
+#endif // DEBUG_ADAR300x
+	ret = adar300x_reg_update(st, ADAR300x_REG_ADC_CONTROL2, 0x01, val);
+	if (ret < 0)
+		return ret;
+
+	do {
+		ret = adar300x_reg_read(st, ADAR300x_REG_ADC_CONTROL2, &val);
+		if (ret < 0)
+			return ret;
+#ifdef DEBUG_ADAR300x
+		pr_err("adar300x_adc_read2 ch:%x", val);
+#endif // DEBUG_ADAR300x
+		val = (0x10 & val) ? 0 : 1;
+#ifdef DEBUG_ADAR300x
+		pr_err("adar300x_adc_read3 ch:%x", val);
+#endif // DEBUG_ADAR300x
+	} while(val);
+
+	return adar300x_reg_read(st, ADAR300x_REG_ADC_DATA_OUT, value);
+}
+
+static int adar300x_adc_setup(struct adar300x_state *st, enum adar300x_ADC_sel sel)
+{
+	int ret;
+
+	ret = adar300x_reg_update(st, ADAR300x_REG_ADC_CONTROL, 0x80, 0x80);
+	if (ret < 0)
+		return ret;
+
+	ret = adar300x_reg_update(st, ADAR300x_REG_ADC_CONTROL, 0x80, 0x00);
+	if (ret < 0)
+		return ret;
+
+	return adar300x_reg_update(st, ADAR300x_REG_ADC_CONTROL, 0x03, sel);
 }
 
 static int adar300x_get_mode_address(struct iio_dev *indio_dev,
@@ -315,22 +323,34 @@ static int adar300x_read_raw(struct iio_dev *indio_dev,
 
 	switch (m) {
 	case IIO_CHAN_INFO_RAW:
-		ret = adar300x_get_mode_address(indio_dev, chan, &address);
-		if (ret)
-			return ret;
+		switch(chan->type) {
+			case IIO_POWER:
+			case IIO_PHASE:
+				ret = adar300x_get_mode_address(indio_dev, chan, &address);
+				if (ret)
+					return ret;
 
-		ret = adar300x_set_page(st, ADAR300x_CONFIG_PAGE);
-		if (ret)
-			return ret;
+				ret = adar300x_set_page(st, ADAR300x_CONFIG_PAGE);
+				if (ret)
+					return ret;
 
-		ret = adar300x_reg_read(st, address, val);
+				ret = adar300x_reg_read(st, address, val);
+				if (ret)
+					return ret;
 #ifdef DEBUG_ADAR300x
 		pr_err("adar300x_read_raw channel: %lud, address:%x, value: %d, ret: %d\n", chan->address, address, *val, ret);
 #endif // DEBUG_ADAR300x
-		if (ret)
-			return ret;
+				return IIO_VAL_INT;
+			case IIO_TEMP:
+				ret = adar300x_adc_read(st, val);
+				if (ret)
+					return ret;
 
-		return IIO_VAL_INT;
+				return IIO_VAL_INT;
+			break;
+			default:
+				return -EINVAL;
+		}
 	case IIO_CHAN_INFO_SCALE:
 		switch(chan->type) {
 		case IIO_POWER:
@@ -344,10 +364,20 @@ static int adar300x_read_raw(struct iio_dev *indio_dev,
 
 			return IIO_VAL_FRACTIONAL;
 		case IIO_TEMP:
-			*val = 1; //todo
-			*val2 = 2;
+			*val = 0;
+			*val2 = 911500;
 
-			return IIO_VAL_FRACTIONAL;
+			return IIO_VAL_INT_PLUS_MICRO;
+		default:
+			return -EINVAL;
+		}
+	case IIO_CHAN_INFO_OFFSET:
+		switch(chan->type) {
+		case IIO_TEMP:
+			*val = 86;
+			*val2 = 362000;
+
+			return IIO_VAL_INT_PLUS_MICRO;
 		default:
 			return -EINVAL;
 		}
@@ -883,8 +913,6 @@ static const unsigned long adar300x_available_scan_masks[] = {
 // 	},
 // };
 
-
-
 static int adar300x_setup(struct iio_dev *indio_dev)
 {
 	struct adar300x_state *st = iio_priv(indio_dev);
@@ -963,6 +991,10 @@ static int adar300x_setup(struct iio_dev *indio_dev)
 	pr_info("%s: done\n", __func__);
 #endif // DEBUG_ADAR300x
 
+	ret = adar300x_adc_setup(st, ADAR300x_ADC_TEMPERATURE);
+	if (ret < 0)
+	       return ret;
+
 	return 0;
 }
 
@@ -1015,9 +1047,10 @@ static int adar300x_ram_write(struct adar300x_state *dac, struct iio_dma_buffer_
 		packed[3] = data[i + 4] << 2 | data[i + 5] >> 4;
 		packed[4] = data[i + 5] << 4 | data[i + 6] >> 2;
 		packed[5] = data[i + 6] << 6 | data[i + 7];
-
+#ifdef DEBUG_ADAR300x
 		dev_err(&dac->spi->dev, "data: %x %x %x %x %x %x %x, %x",data[i+0], data[i+1], data[i+2], data[i+3], data[i+4], data[i+5], data[i+6], data[i+7]);
 		dev_err(&dac->spi->dev, "packed: %x %x %x %x %x %x", packed[0], packed[1], packed[2], packed[3], packed[4], packed[5]);
+#endif // DEBUG_ADAR300x
 		if (dac->beam_load_mode[beam] == ADAR300x_MEMORY_CTRL)
 		{
 			ret = adar300x_set_page(dac, beam + 1);
@@ -1103,19 +1136,22 @@ static int hw_submit_block(struct iio_dma_buffer_queue *queue,
 	ret = adar300x_ram_read(dac, 1, 0x100, &rd_data);
 	if (ret < 0)
 		goto error;
+#ifdef DEBUG_ADAR300x
 	for(i = 0; i < 24; i++)
 	{
 		ret = adar300x_ram_read(dac, 1, 0x100 + i, &rd_data);
 		if (ret < 0)
 			goto error;
-#ifdef DEBUG_ADAR300x
+
 		dev_err(&dac->spi->dev, "rd_data i: %d addr:%x read data: %x",i , 0x100+i, rd_data);
-#endif // DEBUG_ADAR300x
+
 	}
 
 	for (i = 0; i < block->block.bytes_used; i++) {
 		printk(KERN_INFO "%d: %x ", i, data[i]);
 	}
+#endif // DEBUG_ADAR300x
+
 	iio_dma_buffer_block_done(block);
 
 error:

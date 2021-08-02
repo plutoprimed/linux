@@ -72,7 +72,7 @@ static const struct iio_chan_spec name[] = {				\
 	ADAR300x_DELAY_CH(14, 7, "BEAM_H_EL3_DELAY"),			\
 	ADAR300x_ATTEN_CH(15, 7, "BEAM_H_EL3_ATTENUATION"),		\
 									\
-	/*ADAR300x_TEMP(32, 16, TEMP),*/				\
+	ADAR300x_TEMP(32, 16, TEMP),					\
 };
 
 DECLARE_ADAR3003_CHANNELS(adar3003_channels);

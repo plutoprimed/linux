@@ -8,7 +8,7 @@
 #ifndef _ADAR300X_H
 #define _ADAR300X_H
 
-//#define DEBUG_ADAR300x
+#define DEBUG_ADAR300x
 
 #define ADAR300x_DELAY_CH(_id, _num, name)			\
 {								\
@@ -59,6 +59,7 @@
 	.channel = (_num),					\
 	.address = (_id),					\
 	.info_mask_separate = BIT(IIO_CHAN_INFO_RAW) |		\
+			      BIT(IIO_CHAN_INFO_OFFSET) |	\
 			      BIT(IIO_CHAN_INFO_SCALE),		\
 	.scan_index = (_id),					\
 	.scan_type = {						\
