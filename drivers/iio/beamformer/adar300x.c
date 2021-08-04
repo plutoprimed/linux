@@ -36,6 +36,7 @@
 #define ADAR300x_REG_BEAMFORMER_MODE		0x14
 #define ADAR300x_REG_BEAMSTATE_MODE		0x15
 #define ADAR300x_REG_BEAM_SLEEP			0x16
+#define ADAR300x_REG_MEM_SEQPTR(x)		(0x17 + x)
 #define ADAR300x_REG_MEM_SEQPTR0_START		0x17
 #define ADAR300x_REG_MEM_SEQPTR0_STOP		0x18
 #define ADAR300x_REG_MEM_SEQPTR1_START		0x19
@@ -135,10 +136,10 @@
 #define ADAR300x_SPI_CONFIG_RESET	BIT(0)
 
 /* ADAR300x_REG_BEAMSTATE_MODE */
-#define ADAR300x_BM0_MODE	0x03
-#define ADAR300x_BM1_MODE	0x0C
-#define ADAR300x_BM2_MODE	0x30
-#define ADAR300x_BM3_MODE	0xC0
+#define ADAR300x_MODE0	0x03
+#define ADAR300x_MODE1	0x0C
+#define ADAR300x_MODE2	0x30
+#define ADAR300x_MODE3	0xC0
 
 #define ADAR300x_ADDRESS_PAGE_MASK	0x0F
 #define ADAR300x_SPI_ADDR_MSK		GENMASK(13, 10)
@@ -149,8 +150,8 @@
 #define ADAR300x_CHANNELS_PER_BEAM	8
 #define ADAR300x_PACKED_BEAMSTATE_LEN	6	/* bytes */
 #define ADAR300x_UNPACKED_BEAMSTATE_LEN	8	/* bytes */
-#define ADAR300x_MAX_RAM_BEAM_STATES	64
-#define ADAR300x_MAX_FIFO_BEAM_STATES	16
+#define ADAR300x_MAX_RAM_STATES	64
+#define ADAR300x_MAX_FIFO_STATES	16
 #define ADAR300x_MAX_DEV		16
 #define ADAR300x_MAX_RAW		0x3f
 #define ADAR300x_MAX_GAIN		31	/* dB */
@@ -289,19 +290,27 @@ static int adar300x_get_mode_address(struct iio_dev *indio_dev,
 {
 	struct adar300x_state *st = iio_priv(indio_dev);
 	enum adar300x_beamstate_mode_ctrl beam;
+	u8 chan_addr;
 
-	beam = chan->address / (ADAR300x_ELEMENTS_PER_BEAM * 2);
+	if (st->chip_info->chip_id == ID_ADAR3003) {
+		chan_addr = chan->address + (4 * (chan->address / 4));
+		beam = chan->address / ADAR300x_ELEMENTS_PER_BEAM;
+	}
+	else {
+		chan_addr = chan->address;
+		beam = chan->address / (ADAR300x_ELEMENTS_PER_BEAM * 2);
+	}
 
 	switch(st->beam_load_mode[beam]) {
 	case ADAR300x_DIRECT_CTRL:
 	case ADAR300x_INST_DIRECT_CTRL:
-		*address = ADAR3002_REG_DRCT_CNTRL(chan->address);
+		*address = ADAR3002_REG_DRCT_CNTRL(chan_addr);
 		return 0;
 	case ADAR300x_RESET:
-		*address = ADAR3002_REG_RESET(chan->address);
+		*address = ADAR3002_REG_RESET(chan_addr);
 		return 0;
 	case ADAR300x_MUTE:
-		*address = ADAR3002_REG_MUTE(chan->address);
+		*address = ADAR3002_REG_MUTE(chan_addr);
 		return 0;
 	default:
 		return -EINVAL;
@@ -602,6 +611,9 @@ ssize_t adar300x_ram_store(struct device *dev,
 
 	beam = this_attr->address;
 	ret = kstrtou8(buf, 10, &readval);
+	if (readval > (ADAR300x_MAX_RAM_STATES - 1))
+		return -EINVAL;
+
 	switch (beam) {
 	case ADAR300x_PTR0_RAM_START:
 	case ADAR300x_PTR0_RAM_STOP:
@@ -611,7 +623,7 @@ ssize_t adar300x_ram_store(struct device *dev,
 	case ADAR300x_PTR2_RAM_STOP:
 	case ADAR300x_PTR3_RAM_START:
 	case ADAR300x_PTR3_RAM_STOP:
-		ret = adar300x_reg_write(st, ADAR300x_REG_MEM_SEQPTR0_START + beam, readval);
+		ret = adar300x_reg_write(st, ADAR300x_REG_MEM_SEQPTR(beam), readval);
 		if (ret <0)
 			return ret;
 
@@ -621,8 +633,6 @@ ssize_t adar300x_ram_store(struct device *dev,
 	case ADAR300x_RAM_INDEX2:
 	case ADAR300x_RAM_INDEX3:
 		beam -= ADAR300x_RAM_INDEX0;
-		if (readval > 63)
-			return -EINVAL;
 
 		st->beam_index[beam] = readval;
 		break;
@@ -690,9 +700,6 @@ ssize_t adar300x_fifo_show(struct device *dev,
 	u32 readval;
 
 	fifo_attr = this_attr->address;
-
-	// if (fifo_attr > ADAR300x_BEAM3_FIFO_RD)
-	// 	return -EINVAL;
 
 	fifo_ptr = ADAR300x_REG_FIFO_POINTER(fifo_attr);
 	ret = adar300x_set_page(st, ADAR300x_CONFIG_PAGE);
@@ -842,7 +849,7 @@ ssize_t adar300x_mode_store(struct device *dev,
 	}
 
 	ch = this_attr->address;
-	beam_mask = ADAR300x_BM0_MODE << (ch * 2);
+	beam_mask = ADAR300x_MODE0 << (ch * 2);
 	if (mode <= ADAR300x_INST_DIRECT_CTRL) {
 #ifdef DEBUG_ADAR300x
 		dev_err(indio_dev->dev.parent, "adar300x_mode_store ch: %d,  mode %d", ch, mode);
@@ -878,7 +885,6 @@ ssize_t adar300x_mode_show(struct device *dev,
 	struct iio_dev *indio_dev = dev_to_iio_dev(dev);
 	struct iio_dev_attr *this_attr = to_iio_dev_attr(attr);
 	struct adar300x_state *st = iio_priv(indio_dev);
-	int ret = 0;
 	u16 ch;
 
 	ch = this_attr->address;
@@ -1030,7 +1036,7 @@ static int adar300x_ram_write(struct adar300x_state *dac, struct iio_dma_buffer_
 	for (i = 0; i < block->block.bytes_used; i++)	
 		data[i] &= 0x3f;
 
-	for (i = 0, beam = 0, ram_beam_state = 0; ((i + ADAR300x_UNPACKED_BEAMSTATE_LEN) <= block->block.bytes_used) && ram_beam_state < ADAR300x_MAX_RAM_BEAM_STATES;)
+	for (i = 0, beam = 0, ram_beam_state = 0; ((i + ADAR300x_UNPACKED_BEAMSTATE_LEN) <= block->block.bytes_used) && ram_beam_state < ADAR300x_MAX_RAM_STATES;)
 	{
 		if (beam == ADAR300x_BEAMS_PER_DEVICE)
 			ram_beam_state++;

@@ -145,7 +145,6 @@ static IIO_DEVICE_ATTR(beam2_fifo_wr, 0644,
 static IIO_DEVICE_ATTR(beam3_fifo_wr, 0644,
 		       adar300x_fifo_show, NULL, ADAR300x_FIFO_WR3);
 
-
 static IIO_DEVICE_ATTR(amp_bias_reset_EL0V, 0644,
 		       adar300x_amp_bias_show, adar300x_amp_bias_store, ADAR300x_RESET_EL0V_AMP);
 static IIO_DEVICE_ATTR(amp_bias_reset_EL1V, 0644,
