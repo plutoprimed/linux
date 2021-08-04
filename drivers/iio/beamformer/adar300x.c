@@ -594,8 +594,7 @@ ssize_t adar300x_update_show(struct device *dev,
 	return sprintf(buf, "%d\n", readval);
 }
 
-
-ssize_t adar300x_ram_store(struct device *dev,
+ssize_t adar300x_ram_index_store(struct device *dev,
 			      struct device_attribute *attr,
 			      const char *buf, size_t len)
 {
@@ -614,36 +613,53 @@ ssize_t adar300x_ram_store(struct device *dev,
 	if (readval > (ADAR300x_MAX_RAM_STATES - 1))
 		return -EINVAL;
 
-	switch (beam) {
-	case ADAR300x_PTR0_RAM_START:
-	case ADAR300x_PTR0_RAM_STOP:
-	case ADAR300x_PTR1_RAM_START:
-	case ADAR300x_PTR1_RAM_STOP:
-	case ADAR300x_PTR2_RAM_START:
-	case ADAR300x_PTR2_RAM_STOP:
-	case ADAR300x_PTR3_RAM_START:
-	case ADAR300x_PTR3_RAM_STOP:
-		ret = adar300x_reg_write(st, ADAR300x_REG_MEM_SEQPTR(beam), readval);
-		if (ret <0)
-			return ret;
+	st->beam_index[beam] = readval;
 
-		break;
-	case ADAR300x_RAM_INDEX0:
-	case ADAR300x_RAM_INDEX1:
-	case ADAR300x_RAM_INDEX2:
-	case ADAR300x_RAM_INDEX3:
-		beam -= ADAR300x_RAM_INDEX0;
+	return len;
+}
 
-		st->beam_index[beam] = readval;
-		break;
-	default:
+ssize_t adar300x_ram_index_show(struct device *dev,
+			struct device_attribute *attr,
+			char *buf)
+{
+	struct iio_dev *indio_dev = dev_to_iio_dev(dev);
+	struct iio_dev_attr *this_attr = to_iio_dev_attr(attr);
+	struct adar300x_state *st = iio_priv(indio_dev);
+	int ret = 0;
+	u32 readval;
+
+	readval = st->beam_index[this_attr->address];
+
+	return sprintf(buf, "%d\n", readval);
+}
+
+ssize_t adar300x_ram_range_store(struct device *dev,
+			      struct device_attribute *attr,
+			      const char *buf, size_t len)
+{
+	struct iio_dev *indio_dev = dev_to_iio_dev(dev);
+	struct iio_dev_attr *this_attr = to_iio_dev_attr(attr);
+	struct adar300x_state *st = iio_priv(indio_dev);
+	u8 readval;
+	int ret = 0, beam;
+
+	ret = adar300x_set_page(st, ADAR300x_CONFIG_PAGE);
+	if (ret < 0)
+		return ret;
+
+	beam = this_attr->address;
+	ret = kstrtou8(buf, 10, &readval);
+	if (readval > (ADAR300x_MAX_RAM_STATES - 1))
 		return -EINVAL;
-	}
+
+	ret = adar300x_reg_write(st, ADAR300x_REG_MEM_SEQPTR(beam), readval);
+	if (ret <0)
+		return ret;
 	
 	return len;
 }
 
-ssize_t adar300x_ram_show(struct device *dev,
+ssize_t adar300x_ram_range_show(struct device *dev,
 			struct device_attribute *attr,
 			char *buf)
 {
@@ -655,35 +671,13 @@ ssize_t adar300x_ram_show(struct device *dev,
 	u32 readval;
 	beam = this_attr->address;
 
-
 	ret = adar300x_set_page(st, ADAR300x_CONFIG_PAGE);
 	if (ret < 0)
 		return ret;
 
-	switch (beam) {
-	case ADAR300x_PTR0_RAM_START:
-	case ADAR300x_PTR0_RAM_STOP:
-	case ADAR300x_PTR1_RAM_START:
-	case ADAR300x_PTR1_RAM_STOP:
-	case ADAR300x_PTR2_RAM_START:
-	case ADAR300x_PTR2_RAM_STOP:
-	case ADAR300x_PTR3_RAM_START:
-	case ADAR300x_PTR3_RAM_STOP:
-		ret = adar300x_reg_read(st, ADAR300x_REG_MEM_SEQPTR0_START + beam, &readval);
-		if (ret <0)
-			return ret;
-
-		break;
-	case ADAR300x_RAM_INDEX0:
-	case ADAR300x_RAM_INDEX1:
-	case ADAR300x_RAM_INDEX2:
-	case ADAR300x_RAM_INDEX3:
-		beam -= ADAR300x_RAM_INDEX0;
-		readval = st->beam_index[beam];
-		break;
-	default:
-		return -EINVAL;
-	}
+	ret = adar300x_reg_read(st, ADAR300x_REG_MEM_SEQPTR0_START + beam, &readval);
+	if (ret <0)
+		return ret;
 
 	return sprintf(buf, "%d\n", readval);
 }

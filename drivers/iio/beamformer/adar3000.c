@@ -86,40 +86,40 @@ static IIO_DEVICE_ATTR(beam2_load_mode_available, 0444, adar300x_show_mode_avail
 static IIO_DEVICE_ATTR(beam3_load_mode_available, 0444, adar300x_show_mode_available, NULL, 0);
 
 static IIO_DEVICE_ATTR(beam0_ram_start, 0644,
-		       adar300x_ram_show, adar300x_ram_store, ADAR300x_PTR0_RAM_START);
+		       adar300x_ram_range_show, adar300x_ram_range_store, ADAR300x_PTR0_RAM_START);
 
 static IIO_DEVICE_ATTR(beam1_ram_start, 0644,
-		       adar300x_ram_show, adar300x_ram_store, ADAR300x_PTR1_RAM_START);
+		       adar300x_ram_range_show, adar300x_ram_range_store, ADAR300x_PTR1_RAM_START);
 
 static IIO_DEVICE_ATTR(beam2_ram_start, 0644,
-		       adar300x_ram_show, adar300x_ram_store, ADAR300x_PTR2_RAM_START);
+		       adar300x_ram_range_show, adar300x_ram_range_store, ADAR300x_PTR2_RAM_START);
 
 static IIO_DEVICE_ATTR(beam3_ram_start, 0644,
-		       adar300x_ram_show, adar300x_ram_store, ADAR300x_PTR3_RAM_START);
+		       adar300x_ram_range_show, adar300x_ram_range_store, ADAR300x_PTR3_RAM_START);
 
 static IIO_DEVICE_ATTR(beam0_ram_stop, 0644,
-		       adar300x_ram_show, adar300x_ram_store, ADAR300x_PTR0_RAM_STOP);
+		       adar300x_ram_range_show, adar300x_ram_range_store, ADAR300x_PTR0_RAM_STOP);
 
 static IIO_DEVICE_ATTR(beam1_ram_stop, 0644,
-		       adar300x_ram_show, adar300x_ram_store, ADAR300x_PTR1_RAM_STOP);
+		       adar300x_ram_range_show, adar300x_ram_range_store, ADAR300x_PTR1_RAM_STOP);
 
 static IIO_DEVICE_ATTR(beam2_ram_stop, 0644,
-		       adar300x_ram_show, adar300x_ram_store, ADAR300x_PTR2_RAM_STOP);
+		       adar300x_ram_range_show, adar300x_ram_range_store, ADAR300x_PTR2_RAM_STOP);
 
 static IIO_DEVICE_ATTR(beam3_ram_stop, 0644,
-		       adar300x_ram_show, adar300x_ram_store, ADAR300x_PTR3_RAM_STOP);
+		       adar300x_ram_range_show, adar300x_ram_range_store, ADAR300x_PTR3_RAM_STOP);
 
 static IIO_DEVICE_ATTR(beam0_ram_index, 0644,
-		       adar300x_ram_show, adar300x_ram_store, ADAR300x_RAM_INDEX0);
+		       adar300x_ram_index_show, adar300x_ram_index_store, ADAR300x_RAM_INDEX0);
 
 static IIO_DEVICE_ATTR(beam1_ram_index, 0644,
-		       adar300x_ram_show, adar300x_ram_store, ADAR300x_RAM_INDEX1);
+		       adar300x_ram_index_show, adar300x_ram_index_store, ADAR300x_RAM_INDEX1);
 
 static IIO_DEVICE_ATTR(beam2_ram_index, 0644,
-		       adar300x_ram_show, adar300x_ram_store, ADAR300x_RAM_INDEX2);
+		       adar300x_ram_index_show, adar300x_ram_index_store, ADAR300x_RAM_INDEX2);
 
 static IIO_DEVICE_ATTR(beam3_ram_index, 0644,
-		       adar300x_ram_show, adar300x_ram_store, ADAR300x_RAM_INDEX3);
+		       adar300x_ram_index_show, adar300x_ram_index_store, ADAR300x_RAM_INDEX3);
 
 static IIO_DEVICE_ATTR(beam0_fifo_rd, 0644,
 		       adar300x_fifo_show, NULL, ADAR300x_FIFO_RD0);

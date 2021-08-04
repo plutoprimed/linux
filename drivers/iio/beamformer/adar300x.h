@@ -89,7 +89,7 @@ enum adar300x_iio_ram_ptrs {
 };
 
 enum adar300x_iio_ram_idxs {
-	ADAR300x_RAM_INDEX0 = ADAR300x_PTR3_RAM_STOP + 1,
+	ADAR300x_RAM_INDEX0,
 	ADAR300x_RAM_INDEX1,
 	ADAR300x_RAM_INDEX2,
 	ADAR300x_RAM_INDEX3,
@@ -142,8 +142,6 @@ enum adar300x_beamstate_mode_ctrl {
 	ADAR300x_MUTE,
 };
 
-
-
 struct adar300x_chip_info {
 	unsigned int			chip_id;
 	unsigned int			num_channels;
@@ -164,11 +162,19 @@ struct adar300x_state {
 	struct iio_buffer			*dma_buffer;
 };
 
-ssize_t adar300x_ram_store(struct device *dev,
+ssize_t adar300x_ram_range_store(struct device *dev,
 			      struct device_attribute *attr,
 			      const char *buf, size_t len);
 
-ssize_t adar300x_ram_show(struct device *dev,
+ssize_t adar300x_ram_range_show(struct device *dev,
+			struct device_attribute *attr,
+			char *buf);
+
+ssize_t adar300x_ram_index_store(struct device *dev,
+			      struct device_attribute *attr,
+			      const char *buf, size_t len);
+
+ssize_t adar300x_ram_index_show(struct device *dev,
 			struct device_attribute *attr,
 			char *buf);
 
