@@ -412,12 +412,12 @@ static const struct adar300x_chip_info adar3000_chip_info_tbl[] = {
 		.num_channels = ARRAY_SIZE(adar3000_channels),
 	},
 	[ID_ADAR3001] = {
-		.chip_id = ID_ADAR3002,
+		.chip_id = ID_ADAR3001,
 		.channels = adar3001_channels,
 		.num_channels = ARRAY_SIZE(adar3002_channels),
 	},
 	[ID_ADAR3002] = {
-		.chip_id = ID_ADAR3003,
+		.chip_id = ID_ADAR3002,
 		.channels = adar3002_channels,
 		.num_channels = ARRAY_SIZE(adar3002_channels),
 	},

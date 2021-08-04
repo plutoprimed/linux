@@ -21,7 +21,6 @@
 #include <linux/iio/buffer.h>
 #include "adar300x.h"
 
-
 enum adar3003_iio_dev_attr {
 	ADAR3003_EL0VH,
 	ADAR3003_EL1VH,
@@ -39,15 +38,20 @@ static IIO_DEVICE_ATTR(el2vh_update, 0644,
 static IIO_DEVICE_ATTR(el3vh_update, 0644,
 		       adar300x_update_show, adar300x_update_store, ADAR3003_EL3VH);
 
+static IIO_DEVICE_ATTR(update_intf_ctrl_available, 0444, adar300x_show_update_intf_ctrl_available, NULL, 0);
+
+static IIO_DEVICE_ATTR(update_intf_ctrl, 0644, adar300x_update_intf_ctrl_show, adar300x_update_intf_ctrl_store, 0);
+
 static struct attribute *adar3003_attributes[] = {
 	&iio_dev_attr_el0vh_update.dev_attr.attr,
 	&iio_dev_attr_el1vh_update.dev_attr.attr,
 	&iio_dev_attr_el2vh_update.dev_attr.attr,
 	&iio_dev_attr_el3vh_update.dev_attr.attr,
 
+	&iio_dev_attr_update_intf_ctrl.dev_attr.attr,
+	&iio_dev_attr_update_intf_ctrl_available.dev_attr.attr,
 	NULL,
 };
-
 
 static const struct attribute_group adar3003_attribute_group = {
 	.attrs = adar3003_attributes,

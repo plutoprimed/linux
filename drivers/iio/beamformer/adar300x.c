@@ -242,11 +242,11 @@ static int adar300x_adc_read(struct adar300x_state *st, u32 *value)
 	if (ret < 0)
 		return ret;
 #ifdef DEBUG_ADAR300x
-	pr_err("adar300x_adc_read0 ch:%x", val);
+	pr_err("-----adar300x_adc_read0:%x", val);
 #endif // DEBUG_ADAR300x
 	val = (~val) & 0x01;
 #ifdef DEBUG_ADAR300x
-	pr_err("adar300x_adc_read1 ch:%x", val);
+	pr_err("adar300x_adc_read1:%x", val);
 #endif // DEBUG_ADAR300x
 	ret = adar300x_reg_update(st, ADAR300x_REG_ADC_CONTROL2, 0x01, val);
 	if (ret < 0)
@@ -257,11 +257,11 @@ static int adar300x_adc_read(struct adar300x_state *st, u32 *value)
 		if (ret < 0)
 			return ret;
 #ifdef DEBUG_ADAR300x
-		pr_err("adar300x_adc_read2 ch:%x", val);
+		pr_err("adar300x_adc_read2:%x", val);
 #endif // DEBUG_ADAR300x
 		val = (0x10 & val) ? 0 : 1;
 #ifdef DEBUG_ADAR300x
-		pr_err("adar300x_adc_read3 ch:%x", val);
+		pr_err("adar300x_adc_read3:%x", val);
 #endif // DEBUG_ADAR300x
 	} while(val);
 
