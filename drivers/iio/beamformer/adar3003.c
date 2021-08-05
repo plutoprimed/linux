@@ -395,6 +395,8 @@ static const struct adar300x_chip_info adar3003_chip_info_tbl[] = {
 		.chip_id = ID_ADAR3003,
 		.channels = adar3003_channels,
 		.num_channels = ARRAY_SIZE(adar3003_channels),
+		.unpacked_beamst_len = 4,
+		.packed_beamst_len = 3,
 	},
 };
 static const struct of_device_id adar3003_of_match[] = {

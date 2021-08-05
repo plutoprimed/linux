@@ -146,6 +146,8 @@ struct adar300x_chip_info {
 	unsigned int			chip_id;
 	unsigned int			num_channels;
 	const struct iio_chan_spec	*channels;
+	unsigned int			unpacked_beamst_len;
+	unsigned int			packed_beamst_len;
 };
 
 struct adar300x_state {

@@ -625,7 +625,6 @@ ssize_t adar300x_ram_index_show(struct device *dev,
 	struct iio_dev *indio_dev = dev_to_iio_dev(dev);
 	struct iio_dev_attr *this_attr = to_iio_dev_attr(attr);
 	struct adar300x_state *st = iio_priv(indio_dev);
-	int ret = 0;
 	u32 readval;
 
 	readval = st->beam_index[this_attr->address];
@@ -1024,13 +1023,16 @@ static int adar300x_ram_write(struct adar300x_state *dac, struct iio_dma_buffer_
 	char *data = block->vaddr;
 	char packed[6];
 	int ret;
-	int i, beam, ram_beam_state;
-	u16 addr;
+	int i, j, beam, ram_beam_state;
+	u16 addr, unp_bst_len, p_bst_len;
+
+	unp_bst_len = dac->chip_info->unpacked_beamst_len;
+	p_bst_len = dac->chip_info->packed_beamst_len;
 
 	for (i = 0; i < block->block.bytes_used; i++)	
 		data[i] &= 0x3f;
 
-	for (i = 0, beam = 0, ram_beam_state = 0; ((i + ADAR300x_UNPACKED_BEAMSTATE_LEN) <= block->block.bytes_used) && ram_beam_state < ADAR300x_MAX_RAM_STATES;)
+	for (i = 0, beam = 0, ram_beam_state = 0; ((i + unp_bst_len) <= block->block.bytes_used) && ram_beam_state < ADAR300x_MAX_RAM_STATES;)
 	{
 		if (beam == ADAR300x_BEAMS_PER_DEVICE)
 			ram_beam_state++;
@@ -1040,13 +1042,14 @@ static int adar300x_ram_write(struct adar300x_state *dac, struct iio_dma_buffer_
 			beam++;
 			continue;
 		}
-		
+
 		packed[0] = data[i + 0] << 2 | data[i + 1] >> 4;
 		packed[1] = data[i + 1] << 4 | data[i + 2] >> 2;
 		packed[2] = data[i + 2] << 6 | data[i + 3];
 		packed[3] = data[i + 4] << 2 | data[i + 5] >> 4;
 		packed[4] = data[i + 5] << 4 | data[i + 6] >> 2;
 		packed[5] = data[i + 6] << 6 | data[i + 7];
+
 #ifdef DEBUG_ADAR300x
 		dev_err(&dac->spi->dev, "data: %x %x %x %x %x %x %x, %x",data[i+0], data[i+1], data[i+2], data[i+3], data[i+4], data[i+5], data[i+6], data[i+7]);
 		dev_err(&dac->spi->dev, "packed: %x %x %x %x %x %x", packed[0], packed[1], packed[2], packed[3], packed[4], packed[5]);
@@ -1082,14 +1085,13 @@ static int adar300x_ram_write(struct adar300x_state *dac, struct iio_dma_buffer_
 		else
 			return -EINVAL;
 
-		ret = adar300x_reg_write(dac, addr, (packed[0]));
-		ret = adar300x_reg_write(dac, addr + 1, (packed[1]));
-		ret = adar300x_reg_write(dac, addr + 2, (packed[2]));
-		ret = adar300x_reg_write(dac, addr + 3, (packed[3]));
-		ret = adar300x_reg_write(dac, addr + 4, (packed[4]));
-		ret = adar300x_reg_write(dac, addr + 5, (packed[5]));
-		
-		i += ADAR300x_UNPACKED_BEAMSTATE_LEN;
+		for (j = 0; j < p_bst_len; j++) {
+			ret = adar300x_reg_write(dac, addr + j, (packed[j]));
+			if (ret < 0)
+				return ret;
+		}
+
+		i += unp_bst_len;
 		beam++;
 	}
 #ifdef DEBUG_ADAR300x
