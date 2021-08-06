@@ -157,6 +157,7 @@ struct adar300x_state {
 	const struct adar300x_chip_info		*chip_info;
 	u8					dev_addr;
 	u8 					beam_index[4];
+	u8 					state_buf[4][8];
 	enum adar300x_beamstate_mode_ctrl	beam_mode[4];
 	enum adar300x_beamstate_mode_ctrl	beam_load_mode[4];
 	struct mutex				lock;
