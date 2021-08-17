@@ -155,7 +155,7 @@ struct adar300x_state {
 	struct spi_device			*spi;
 	struct regmap				*regmap;
 	const struct adar300x_chip_info		*chip_info;
-	u8					dev_addr;
+	u16					dev_addr;
 	u8 					beam_index[4];
 	u8 					state_buf[4][8];
 	enum adar300x_beamstate_mode_ctrl	beam_mode[4];

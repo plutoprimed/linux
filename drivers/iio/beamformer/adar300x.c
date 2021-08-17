@@ -199,6 +199,9 @@ static const struct regmap_config adar300x_regmap_config = {
 
 static int adar300x_reg_read(struct adar300x_state *st, u32 reg, u32 *val)
 {
+#ifdef DEBUG_ADAR300x
+	pr_err("adar300x_reg_read:%d", st->dev_addr);
+#endif // DEBUG_ADAR300x
 	return regmap_read(st->regmap, st->dev_addr | reg, val);
 }
 
@@ -1420,8 +1423,8 @@ static struct iio_info adar300x_info = {
 
 int adar300x_probe(struct spi_device *spi, const struct attribute_group *attr_group)
 {
-	struct adar300x_state		**st;
-	struct iio_dev			**indio_dev;
+	struct adar300x_state		*priv;
+	struct iio_dev			*indio_dev;
 	const struct adar300x_chip_info *info;
 	struct device_node 		*child, *np = spi->dev.of_node;
 	struct regmap 			*regmap;
@@ -1437,14 +1440,6 @@ int adar300x_probe(struct spi_device *spi, const struct attribute_group *attr_gr
 		return -ENODEV;
 	}
 
-	indio_dev = devm_kzalloc(&spi->dev, num_dev * sizeof(*indio_dev), GFP_KERNEL);
-	if (!indio_dev)
-		return -ENOMEM;
-
-	st = devm_kzalloc(&spi->dev, num_dev * sizeof(*st), GFP_KERNEL);
-	if (!st)
-		return -ENOMEM;
-
 	regmap = devm_regmap_init_spi(spi, &adar300x_regmap_config);
 	if (IS_ERR(regmap)) {
 		dev_err(&spi->dev, "Error initializing spi regmap: %ld\n",
@@ -1453,54 +1448,50 @@ int adar300x_probe(struct spi_device *spi, const struct attribute_group *attr_gr
 	}
 
 	for_each_available_child_of_node(np, child) {
-		indio_dev[cnt] = devm_iio_device_alloc(&spi->dev,
-						       sizeof(**st));
-		if (!indio_dev[cnt])
+		indio_dev = devm_iio_device_alloc(&spi->dev, sizeof(*priv));
+		if (!indio_dev)
 			return -ENOMEM;
 
 		info = of_device_get_match_data(&spi->dev);
 		if (!info)
 			return -ENODEV;
 
-		st[cnt] = iio_priv(indio_dev[cnt]);
-		//memset(st, 0, sizeof(*st));
-		// st[cnt]->indio_dev = indio_dev[cnt];
-		st[cnt]->spi = spi;
-		dev_set_drvdata(&spi->dev, st[cnt]);
-		st[cnt]->chip_info = info;
-		st[cnt]->regmap = regmap;
-
+		priv = iio_priv(indio_dev);
+		priv->spi = spi;
+		dev_set_drvdata(&spi->dev, priv);
+		priv->chip_info = info;
+		priv->regmap = regmap;
 		ret = of_property_read_u32(child, "reg", &tmp);
 		if (ret < 0)
 			return ret;
 
-		st[cnt]->dev_addr = ADAR300x_SPI_ADDR(tmp);
-
-		indio_dev[cnt]->dev.parent = &spi->dev;
-		indio_dev[cnt]->name = child->name;
-		indio_dev[cnt]->channels = st[cnt]->chip_info->channels;
-		indio_dev[cnt]->num_channels = st[cnt]->chip_info->num_channels;
+		priv->dev_addr = ADAR300x_SPI_ADDR(tmp);
+		indio_dev->dev.parent = &spi->dev;
+		indio_dev->name = child->name;
+		indio_dev->channels = priv->chip_info->channels;
+		indio_dev->num_channels = priv->chip_info->num_channels;
 		adar300x_info.attrs = attr_group;
-		indio_dev[cnt]->info = &adar300x_info;
-		indio_dev[cnt]->modes = INDIO_DIRECT_MODE;
-		indio_dev[cnt]->direction = IIO_DEVICE_DIRECTION_OUT;
-		indio_dev[cnt]->available_scan_masks = adar300x_available_scan_masks;
-		ret = adar300x_setup(indio_dev[cnt]);
+		indio_dev->info = &adar300x_info;
+		indio_dev->modes = INDIO_DIRECT_MODE;
+		indio_dev->direction = IIO_DEVICE_DIRECTION_OUT;
+		indio_dev->available_scan_masks = adar300x_available_scan_masks;
+		ret = adar300x_setup(indio_dev);
+
 		if (ret < 0) {
-			dev_err(&spi->dev, "Setup failed (%d), label: %s, dev: %d, cnt: %d\n", ret, indio_dev[cnt]->label, tmp, cnt);
-			return ret;
+			dev_err(&spi->dev, "Setup failed (%d), label: %s, dev: %d, cnt: %d\n", ret, indio_dev->label, tmp, cnt);
 		}
+		else {
+			/* Do setup for each device */
+			err = adar300x_setup_buffer(&spi->dev, indio_dev, spi->irq);
+			if (err) {
+				dev_err(&spi->dev, "Error buffer setup\n");
+				return ret;
+			}
 
-		/* Do setup for each device */
-		err = adar300x_setup_buffer(&spi->dev, indio_dev[cnt], spi->irq);
-		if (err) {
-			dev_err(&spi->dev, "Error buffer setup\n");
-			return ret;
+			ret = devm_iio_device_register(&spi->dev, indio_dev);
+			if (ret < 0)
+				return ret;
 		}
-
-		ret = devm_iio_device_register(&spi->dev, indio_dev[cnt]);
-		if (ret < 0)
-			return ret;
 	
 		cnt++;
 	}
