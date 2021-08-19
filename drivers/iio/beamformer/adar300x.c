@@ -46,6 +46,9 @@
 #define ADAR300x_REG_MEM_SEQPTR3_START		0x1D
 #define ADAR300x_REG_MEM_SEQPTR3_STOP		0x1E
 #define ADAR300x_REG_ADC_CONTROL		0x20
+
+#define ADAR300x_REG_ADC_CONTROL2_START		BIT(0)
+#define ADAR300x_REG_ADC_CONTROL2_END_CONV(x)	FIELD_GET(0x10, x)
 #define ADAR300x_REG_ADC_CONTROL2		0x21
 #define ADAR300x_REG_ADC_DATA_OUT		0x22
 #define ADAR300x_REG_DAC_DATA_MSB		0x23
@@ -199,9 +202,6 @@ static const struct regmap_config adar300x_regmap_config = {
 
 static int adar300x_reg_read(struct adar300x_state *st, u32 reg, u32 *val)
 {
-#ifdef DEBUG_ADAR300x
-	pr_err("adar300x_reg_read:%d", st->dev_addr);
-#endif // DEBUG_ADAR300x
 	return regmap_read(st->regmap, st->dev_addr | reg, val);
 }
 
@@ -246,11 +246,12 @@ static int adar300x_adc_read(struct adar300x_state *st, u32 *value)
 #ifdef DEBUG_ADAR300x
 	pr_err("-----adar300x_adc_read0:%x", val);
 #endif // DEBUG_ADAR300x
-	val = (~val) & 0x01;
+	val = (~val) & ADAR300x_REG_ADC_CONTROL2_START;
 #ifdef DEBUG_ADAR300x
 	pr_err("adar300x_adc_read1:%x", val);
 #endif // DEBUG_ADAR300x
-	ret = adar300x_reg_update(st, ADAR300x_REG_ADC_CONTROL2, 0x01, val);
+	ret = adar300x_reg_update(st, ADAR300x_REG_ADC_CONTROL2,
+				  ADAR300x_REG_ADC_CONTROL2_START, val);
 	if (ret < 0)
 		return ret;
 
@@ -261,11 +262,13 @@ static int adar300x_adc_read(struct adar300x_state *st, u32 *value)
 #ifdef DEBUG_ADAR300x
 		pr_err("adar300x_adc_read2:%x", val);
 #endif // DEBUG_ADAR300x
-		val = (0x10 & val) ? 0 : 1;
+
+		val = ADAR300x_REG_ADC_CONTROL2_END_CONV(val);
+		//val = (0x10 & val) ? 0 : 1;
 #ifdef DEBUG_ADAR300x
 		pr_err("adar300x_adc_read3:%x", val);
 #endif // DEBUG_ADAR300x
-	} while(val);
+	} while(val == 0);
 
 	return adar300x_reg_read(st, ADAR300x_REG_ADC_DATA_OUT, value);
 }
