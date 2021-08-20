@@ -113,28 +113,28 @@ static IIO_DEVICE_ATTR(beam3_ram_index, 0644,
 		       adar300x_ram_index_show, adar300x_ram_index_store, ADAR300x_RAM_INDEX3);
 
 static IIO_DEVICE_ATTR(beam0_fifo_rd, 0644,
-		       adar300x_fifo_show, NULL, ADAR300x_FIFO_RD0);
+		       adar300x_fifo_ptr_show, NULL, ADAR300x_FIFO_RD0);
 
 static IIO_DEVICE_ATTR(beam1_fifo_rd, 0644,
-		       adar300x_fifo_show, NULL, ADAR300x_FIFO_RD1);
+		       adar300x_fifo_ptr_show, NULL, ADAR300x_FIFO_RD1);
 
 static IIO_DEVICE_ATTR(beam2_fifo_rd, 0644,
-		       adar300x_fifo_show, NULL, ADAR300x_FIFO_RD2);
+		       adar300x_fifo_ptr_show, NULL, ADAR300x_FIFO_RD2);
 
 static IIO_DEVICE_ATTR(beam3_fifo_rd, 0644,
-		       adar300x_fifo_show, NULL, ADAR300x_FIFO_RD3);
+		       adar300x_fifo_ptr_show, NULL, ADAR300x_FIFO_RD3);
 
 static IIO_DEVICE_ATTR(beam0_fifo_wr, 0644,
-		       adar300x_fifo_show, NULL, ADAR300x_FIFO_WR0);
+		       adar300x_fifo_ptr_show, NULL, ADAR300x_FIFO_WR0);
 
 static IIO_DEVICE_ATTR(beam1_fifo_wr, 0644,
-		       adar300x_fifo_show, NULL, ADAR300x_FIFO_WR1);
+		       adar300x_fifo_ptr_show, NULL, ADAR300x_FIFO_WR1);
 
 static IIO_DEVICE_ATTR(beam2_fifo_wr, 0644,
-		       adar300x_fifo_show, NULL, ADAR300x_FIFO_WR2);
+		       adar300x_fifo_ptr_show, NULL, ADAR300x_FIFO_WR2);
 
 static IIO_DEVICE_ATTR(beam3_fifo_wr, 0644,
-		       adar300x_fifo_show, NULL, ADAR300x_FIFO_WR3);
+		       adar300x_fifo_ptr_show, NULL, ADAR300x_FIFO_WR3);
 
 static IIO_DEVICE_ATTR(amp_bias_reset_EL0V, 0644,
 		       adar300x_amp_bias_show, adar300x_amp_bias_store, ADAR300x_RESET_EL0V_AMP);

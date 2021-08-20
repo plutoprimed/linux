@@ -185,7 +185,7 @@ ssize_t adar300x_ram_index_show(struct device *dev,
 				struct device_attribute *attr,
 				char *buf);
 
-ssize_t adar300x_fifo_show(struct device *dev,
+ssize_t adar300x_fifo_ptr_show(struct device *dev,
 			   struct device_attribute *attr,
 			   char *buf);
 
