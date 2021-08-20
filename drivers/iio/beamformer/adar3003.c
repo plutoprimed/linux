@@ -5,20 +5,9 @@
  * Copyright 2021 Analog Devices Inc.
  */
 
-#include <linux/bitfield.h>
-#include <linux/module.h>
-#include <linux/regmap.h>
-#include <linux/kernel.h>
-#include <linux/firmware.h>
-#include <linux/of_device.h>
 #include <linux/spi/spi.h>
-#include <linux/err.h>
-#include <linux/debugfs.h>
-#include <linux/iio/buffer-dma.h>
-#include <linux/of.h>
-#include <linux/iio/iio.h>
 #include <linux/iio/sysfs.h>
-#include <linux/iio/buffer.h>
+#include <linux/module.h>
 #include "adar300x.h"
 
 enum adar3003_iio_dev_attr {
@@ -31,16 +20,21 @@ enum adar3003_iio_dev_attr {
 
 static IIO_DEVICE_ATTR(el0vh_update, 0644,
 		       adar300x_update_show, adar300x_update_store, ADAR3003_EL0VH);
+
 static IIO_DEVICE_ATTR(el1vh_update, 0644,
 		       adar300x_update_show, adar300x_update_store, ADAR3003_EL1VH);
+
 static IIO_DEVICE_ATTR(el2vh_update, 0644,
 		       adar300x_update_show, adar300x_update_store, ADAR3003_EL2VH);
+
 static IIO_DEVICE_ATTR(el3vh_update, 0644,
 		       adar300x_update_show, adar300x_update_store, ADAR3003_EL3VH);
 
-static IIO_DEVICE_ATTR(update_intf_ctrl_available, 0444, adar300x_show_update_intf_ctrl_available, NULL, 0);
+static IIO_DEVICE_ATTR(update_intf_ctrl_available, 0444,
+		       adar300x_show_update_intf_ctrl_available, NULL, 0);
 
-static IIO_DEVICE_ATTR(update_intf_ctrl, 0644, adar300x_update_intf_ctrl_show, adar300x_update_intf_ctrl_store, 0);
+static IIO_DEVICE_ATTR(update_intf_ctrl, 0644,
+		       adar300x_update_intf_ctrl_show, adar300x_update_intf_ctrl_store, 0);
 
 static IIO_DEVICE_ATTR(el0vh_mode, 0644,
 		       adar300x_mode_show, adar300x_mode_store, ADAR3003_EL0VH);
@@ -142,113 +136,155 @@ static IIO_DEVICE_ATTR(el2vh_fifo_wr, 0644,
 static IIO_DEVICE_ATTR(el3vh_fifo_wr, 0644,
 		       adar300x_fifo_show, NULL, ADAR300x_FIFO_WR3);
 
-
 static IIO_DEVICE_ATTR(amp_bias_reset_EL0V, 0644,
 		       adar300x_amp_bias_show, adar300x_amp_bias_store, ADAR300x_RESET_EL0V_AMP);
+
 static IIO_DEVICE_ATTR(amp_bias_reset_EL1V, 0644,
 		       adar300x_amp_bias_show, adar300x_amp_bias_store, ADAR300x_RESET_EL1V_AMP);
+
 static IIO_DEVICE_ATTR(amp_bias_reset_EL2V, 0644,
 		       adar300x_amp_bias_show, adar300x_amp_bias_store, ADAR300x_RESET_EL2V_AMP);
+
 static IIO_DEVICE_ATTR(amp_bias_reset_EL3V, 0644,
 		       adar300x_amp_bias_show, adar300x_amp_bias_store, ADAR300x_RESET_EL3V_AMP);
 
 static IIO_DEVICE_ATTR(amp_bias_operational_EL0V, 0644,
-		       adar300x_amp_bias_show, adar300x_amp_bias_store, ADAR300x_OPERATIONAL_EL0V_AMP);
+		       adar300x_amp_bias_show, adar300x_amp_bias_store,
+		       ADAR300x_OPERATIONAL_EL0V_AMP);
+
 static IIO_DEVICE_ATTR(amp_bias_operational_EL1V, 0644,
-		       adar300x_amp_bias_show, adar300x_amp_bias_store, ADAR300x_OPERATIONAL_EL1V_AMP);
+		       adar300x_amp_bias_show, adar300x_amp_bias_store,
+		       ADAR300x_OPERATIONAL_EL1V_AMP);
+
 static IIO_DEVICE_ATTR(amp_bias_operational_EL2V, 0644,
-		       adar300x_amp_bias_show, adar300x_amp_bias_store, ADAR300x_OPERATIONAL_EL2V_AMP);
+		       adar300x_amp_bias_show, adar300x_amp_bias_store,
+		       ADAR300x_OPERATIONAL_EL2V_AMP);
+
 static IIO_DEVICE_ATTR(amp_bias_operational_EL3V, 0644,
-		       adar300x_amp_bias_show, adar300x_amp_bias_store, ADAR300x_OPERATIONAL_EL3V_AMP);
+		       adar300x_amp_bias_show, adar300x_amp_bias_store,
+		       ADAR300x_OPERATIONAL_EL3V_AMP);
 
 static IIO_DEVICE_ATTR(amp_bias_mute_EL0V, 0644,
 		       adar300x_amp_bias_show, adar300x_amp_bias_store, ADAR300x_MUTE_EL0V_AMP);
+
 static IIO_DEVICE_ATTR(amp_bias_mute_EL1V, 0644,
 		       adar300x_amp_bias_show, adar300x_amp_bias_store, ADAR300x_MUTE_EL1V_AMP);
+
 static IIO_DEVICE_ATTR(amp_bias_mute_EL2V, 0644,
 		       adar300x_amp_bias_show, adar300x_amp_bias_store, ADAR300x_MUTE_EL2V_AMP);
+
 static IIO_DEVICE_ATTR(amp_bias_mute_EL3V, 0644,
 		       adar300x_amp_bias_show, adar300x_amp_bias_store, ADAR300x_MUTE_EL3V_AMP);
 
 static IIO_DEVICE_ATTR(amp_bias_sleep_EL0V, 0644,
 		       adar300x_amp_bias_show, adar300x_amp_bias_store, ADAR300x_SLEEP_EL0V_AMP);
+
 static IIO_DEVICE_ATTR(amp_bias_sleep_EL1V, 0644,
 		       adar300x_amp_bias_show, adar300x_amp_bias_store, ADAR300x_SLEEP_EL1V_AMP);
+
 static IIO_DEVICE_ATTR(amp_bias_sleep_EL2V, 0644,
 		       adar300x_amp_bias_show, adar300x_amp_bias_store, ADAR300x_SLEEP_EL2V_AMP);
+
 static IIO_DEVICE_ATTR(amp_bias_sleep_EL3V, 0644,
 		       adar300x_amp_bias_show, adar300x_amp_bias_store, ADAR300x_SLEEP_EL3V_AMP);
 
 static IIO_DEVICE_ATTR(amp_bias_operational_EL0H, 0644,
-		       adar300x_amp_bias_show, adar300x_amp_bias_store, ADAR300x_OPERATIONAL_EL0H_AMP);
+		       adar300x_amp_bias_show, adar300x_amp_bias_store,
+		       ADAR300x_OPERATIONAL_EL0H_AMP);
+
 static IIO_DEVICE_ATTR(amp_bias_operational_EL1H, 0644,
-		       adar300x_amp_bias_show, adar300x_amp_bias_store, ADAR300x_OPERATIONAL_EL1H_AMP);
+		       adar300x_amp_bias_show, adar300x_amp_bias_store,
+		       ADAR300x_OPERATIONAL_EL1H_AMP);
+
 static IIO_DEVICE_ATTR(amp_bias_operational_EL2H, 0644,
-		       adar300x_amp_bias_show, adar300x_amp_bias_store, ADAR300x_OPERATIONAL_EL2H_AMP);
+		       adar300x_amp_bias_show, adar300x_amp_bias_store,
+		       ADAR300x_OPERATIONAL_EL2H_AMP);
+
 static IIO_DEVICE_ATTR(amp_bias_operational_EL3H, 0644,
-		       adar300x_amp_bias_show, adar300x_amp_bias_store, ADAR300x_OPERATIONAL_EL3H_AMP);
+		       adar300x_amp_bias_show, adar300x_amp_bias_store,
+		       ADAR300x_OPERATIONAL_EL3H_AMP);
 
 static IIO_DEVICE_ATTR(amp_bias_sleep_EL0H, 0644,
 		       adar300x_amp_bias_show, adar300x_amp_bias_store, ADAR300x_SLEEP_EL0H_AMP);
+
 static IIO_DEVICE_ATTR(amp_bias_sleep_EL1H, 0644,
 		       adar300x_amp_bias_show, adar300x_amp_bias_store, ADAR300x_SLEEP_EL1H_AMP);
+
 static IIO_DEVICE_ATTR(amp_bias_sleep_EL2H, 0644,
 		       adar300x_amp_bias_show, adar300x_amp_bias_store, ADAR300x_SLEEP_EL2H_AMP);
+
 static IIO_DEVICE_ATTR(amp_bias_sleep_EL3H, 0644,
 		       adar300x_amp_bias_show, adar300x_amp_bias_store, ADAR300x_SLEEP_EL3H_AMP);
 
-
 static IIO_DEVICE_ATTR(amp_en_reset_EL0V, 0644,
 		       adar300x_amp_en_show, adar300x_amp_en_store, ADAR300x_RESET_EL0V_AMP);
+
 static IIO_DEVICE_ATTR(amp_en_reset_EL1V, 0644,
 		       adar300x_amp_en_show, adar300x_amp_en_store, ADAR300x_RESET_EL1V_AMP);
+
 static IIO_DEVICE_ATTR(amp_en_reset_EL2V, 0644,
 		       adar300x_amp_en_show, adar300x_amp_en_store, ADAR300x_RESET_EL2V_AMP);
+
 static IIO_DEVICE_ATTR(amp_en_reset_EL3V, 0644,
 		       adar300x_amp_en_show, adar300x_amp_en_store, ADAR300x_RESET_EL3V_AMP);
 
 static IIO_DEVICE_ATTR(amp_en_operational_EL0V, 0644,
 		       adar300x_amp_en_show, adar300x_amp_en_store, ADAR300x_OPERATIONAL_EL0V_AMP);
+
 static IIO_DEVICE_ATTR(amp_en_operational_EL1V, 0644,
 		       adar300x_amp_en_show, adar300x_amp_en_store, ADAR300x_OPERATIONAL_EL1V_AMP);
+
 static IIO_DEVICE_ATTR(amp_en_operational_EL2V, 0644,
 		       adar300x_amp_en_show, adar300x_amp_en_store, ADAR300x_OPERATIONAL_EL2V_AMP);
+
 static IIO_DEVICE_ATTR(amp_en_operational_EL3V, 0644,
 		       adar300x_amp_en_show, adar300x_amp_en_store, ADAR300x_OPERATIONAL_EL3V_AMP);
 
 static IIO_DEVICE_ATTR(amp_en_mute_EL0V, 0644,
 		       adar300x_amp_en_show, adar300x_amp_en_store, ADAR300x_MUTE_EL0V_AMP);
+
 static IIO_DEVICE_ATTR(amp_en_mute_EL1V, 0644,
 		       adar300x_amp_en_show, adar300x_amp_en_store, ADAR300x_MUTE_EL1V_AMP);
+
 static IIO_DEVICE_ATTR(amp_en_mute_EL2V, 0644,
 		       adar300x_amp_en_show, adar300x_amp_en_store, ADAR300x_MUTE_EL2V_AMP);
+
 static IIO_DEVICE_ATTR(amp_en_mute_EL3V, 0644,
 		       adar300x_amp_en_show, adar300x_amp_en_store, ADAR300x_MUTE_EL3V_AMP);
 
 static IIO_DEVICE_ATTR(amp_en_sleep_EL0V, 0644,
 		       adar300x_amp_en_show, adar300x_amp_en_store, ADAR300x_SLEEP_EL0V_AMP);
+
 static IIO_DEVICE_ATTR(amp_en_sleep_EL1V, 0644,
 		       adar300x_amp_en_show, adar300x_amp_en_store, ADAR300x_SLEEP_EL1V_AMP);
+
 static IIO_DEVICE_ATTR(amp_en_sleep_EL2V, 0644,
 		       adar300x_amp_en_show, adar300x_amp_en_store, ADAR300x_SLEEP_EL2V_AMP);
+
 static IIO_DEVICE_ATTR(amp_en_sleep_EL3V, 0644,
 		       adar300x_amp_en_show, adar300x_amp_en_store, ADAR300x_SLEEP_EL3V_AMP);
 
 static IIO_DEVICE_ATTR(amp_en_operational_EL0H, 0644,
 		       adar300x_amp_en_show, adar300x_amp_en_store, ADAR300x_OPERATIONAL_EL0H_AMP);
+
 static IIO_DEVICE_ATTR(amp_en_operational_EL1H, 0644,
 		       adar300x_amp_en_show, adar300x_amp_en_store, ADAR300x_OPERATIONAL_EL1H_AMP);
+
 static IIO_DEVICE_ATTR(amp_en_operational_EL2H, 0644,
 		       adar300x_amp_en_show, adar300x_amp_en_store, ADAR300x_OPERATIONAL_EL2H_AMP);
+
 static IIO_DEVICE_ATTR(amp_en_operational_EL3H, 0644,
 		       adar300x_amp_en_show, adar300x_amp_en_store, ADAR300x_OPERATIONAL_EL3H_AMP);
 
 static IIO_DEVICE_ATTR(amp_en_sleep_EL0H, 0644,
 		       adar300x_amp_en_show, adar300x_amp_en_store, ADAR300x_SLEEP_EL0H_AMP);
+
 static IIO_DEVICE_ATTR(amp_en_sleep_EL1H, 0644,
 		       adar300x_amp_en_show, adar300x_amp_en_store, ADAR300x_SLEEP_EL1H_AMP);
+
 static IIO_DEVICE_ATTR(amp_en_sleep_EL2H, 0644,
 		       adar300x_amp_en_show, adar300x_amp_en_store, ADAR300x_SLEEP_EL2H_AMP);
+
 static IIO_DEVICE_ATTR(amp_en_sleep_EL3H, 0644,
 		       adar300x_amp_en_show, adar300x_amp_en_store, ADAR300x_SLEEP_EL3H_AMP);
 
@@ -355,7 +391,6 @@ static struct attribute *adar3003_attributes[] = {
 	&iio_dev_attr_amp_en_sleep_EL1H.dev_attr.attr,
 	&iio_dev_attr_amp_en_sleep_EL2H.dev_attr.attr,
 	&iio_dev_attr_amp_en_sleep_EL3H.dev_attr.attr,
-
 	NULL,
 };
 
@@ -399,6 +434,7 @@ static const struct adar300x_chip_info adar3003_chip_info_tbl[] = {
 		.packed_beamst_len = 3,
 	},
 };
+
 static const struct of_device_id adar3003_of_match[] = {
 	{ .compatible = "adi,adar3003",
 		.data = &adar3003_chip_info_tbl[ID_ADAR3003], },
@@ -418,6 +454,7 @@ static struct spi_driver adar3003_driver = {
 	},
 	.probe = adar3003_probe,
 };
+
 module_spi_driver(adar3003_driver);
 
 MODULE_AUTHOR("Cristian Pop <cristian.pop@analog.com>");

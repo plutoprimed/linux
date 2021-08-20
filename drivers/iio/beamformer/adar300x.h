@@ -8,7 +8,13 @@
 #ifndef _ADAR300X_H
 #define _ADAR300X_H
 
+#include <linux/iio/buffer-dma.h>
+
 #define DEBUG_ADAR300x
+
+#define ADAR300x_BEAMS_PER_DEVICE	4
+#define ADAR300x_ELEMENTS_PER_BEAM	4
+#define ADAR300x_CHANNELS_PER_BEAM	8
 
 #define ADAR300x_DELAY_CH(_id, _num, name)			\
 {								\
@@ -28,7 +34,6 @@
 		.storagebits = 8,				\
 		.shift = 0,					\
 	},							\
-	/* .ext_info = adar3000_ext_info,*/			\
 }
 
 #define ADAR300x_ATTEN_CH(_id, _num, name)			\
@@ -49,7 +54,6 @@
 		.storagebits = 8,				\
 		.shift = 0,					\
 	},							\
-	/*.ext_info = adar3000_ext_info,*/			\
 }
 
 #define ADAR300x_TEMP(_id, _num, name)				\
@@ -156,87 +160,92 @@ struct adar300x_state {
 	struct regmap				*regmap;
 	const struct adar300x_chip_info		*chip_info;
 	u16					dev_addr;
-	u8 					beam_index[4];
-	u8 					state_buf[4][8];
-	enum adar300x_beamstate_mode_ctrl	beam_mode[4];
-	enum adar300x_beamstate_mode_ctrl	beam_load_mode[4];
+	u8 					beam_index[ADAR300x_BEAMS_PER_DEVICE];
+	u8 			state_buf[ADAR300x_BEAMS_PER_DEVICE][ADAR300x_CHANNELS_PER_BEAM];
+	enum adar300x_beamstate_mode_ctrl	beam_mode[ADAR300x_BEAMS_PER_DEVICE];
+	enum adar300x_beamstate_mode_ctrl	beam_load_mode[ADAR300x_BEAMS_PER_DEVICE];
 	struct mutex				lock;
 	struct iio_dma_buffer_queue		queue;
 	struct iio_buffer			*dma_buffer;
 };
 
 ssize_t adar300x_ram_range_store(struct device *dev,
-			      struct device_attribute *attr,
-			      const char *buf, size_t len);
+				 struct device_attribute *attr,
+				 const char *buf, size_t len);
 
 ssize_t adar300x_ram_range_show(struct device *dev,
-			struct device_attribute *attr,
-			char *buf);
+				struct device_attribute *attr,
+				char *buf);
 
 ssize_t adar300x_ram_index_store(struct device *dev,
-			      struct device_attribute *attr,
-			      const char *buf, size_t len);
+				 struct device_attribute *attr,
+				 const char *buf, size_t len);
 
 ssize_t adar300x_ram_index_show(struct device *dev,
-			struct device_attribute *attr,
-			char *buf);
+				struct device_attribute *attr,
+				char *buf);
 
 ssize_t adar300x_fifo_show(struct device *dev,
-			struct device_attribute *attr,
-			char *buf);
+			   struct device_attribute *attr,
+			   char *buf);
 
 ssize_t adar300x_show_update_intf_ctrl_available(struct device *dev,
-					   struct device_attribute *attr,
-					   char *buf);
+						 struct device_attribute *attr,
+						 char *buf);
+
 ssize_t adar300x_update_intf_ctrl_store(struct device *dev,
-			      struct device_attribute *attr,
-			      const char *buf, size_t len);
+					struct device_attribute *attr,
+					const char *buf, size_t len);
+
 ssize_t adar300x_update_intf_ctrl_show(struct device *dev,
-			struct device_attribute *attr,
-			char *buf);
+				       struct device_attribute *attr,
+				       char *buf);
 
 ssize_t adar300x_update_store(struct device *dev,
 			      struct device_attribute *attr,
 			      const char *buf, size_t len);
 
 ssize_t adar300x_update_show(struct device *dev,
-			      struct device_attribute *attr,
-			      char *buf);
-
+			     struct device_attribute *attr,
+			     char *buf);
 
 ssize_t adar300x_load_mode_store(struct device *dev,
-			      struct device_attribute *attr,
-			      const char *buf, size_t len);
+				 struct device_attribute *attr,
+				 const char *buf, size_t len);
 
 ssize_t adar300x_load_mode_show(struct device *dev,
-			struct device_attribute *attr,
-			char *buf);
+				struct device_attribute *attr,
+				char *buf);
+
 ssize_t adar300x_show_mode_available(struct device *dev,
-					   struct device_attribute *attr,
-					   char *buf);
+				     struct device_attribute *attr,
+				     char *buf);
 
 ssize_t adar300x_mode_store(struct device *dev,
-			      struct device_attribute *attr,
-			      const char *buf, size_t len);
+			    struct device_attribute *attr,
+			    const char *buf, size_t len);
+
 ssize_t adar300x_mode_show(struct device *dev,
-			struct device_attribute *attr,
-			char *buf);
+			   struct device_attribute *attr,
+			   char *buf);
 
 ssize_t adar300x_amp_bias_store(struct device *dev,
-			      struct device_attribute *attr,
-			      const char *buf, size_t len);
+				struct device_attribute *attr,
+				const char *buf, size_t len);
 
 ssize_t adar300x_amp_bias_show(struct device *dev,
-			      struct device_attribute *attr,
-			      char *buf);
+			       struct device_attribute *attr,
+			       char *buf);
+
 ssize_t adar300x_amp_en_store(struct device *dev,
 			      struct device_attribute *attr,
 			      const char *buf, size_t len);
 
 ssize_t adar300x_amp_en_show(struct device *dev,
-			      struct device_attribute *attr,
-			      char *buf);
+			     struct device_attribute *attr,
+			     char *buf);
 
-int adar300x_probe(struct spi_device *spi, const struct attribute_group *attr_group);
+int adar300x_probe(struct spi_device *spi,
+		   const struct attribute_group *attr_group);
 
 #endif

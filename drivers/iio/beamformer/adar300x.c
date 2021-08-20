@@ -6,19 +6,10 @@
  */
 
 #include <linux/bitfield.h>
-#include <linux/module.h>
 #include <linux/regmap.h>
-#include <linux/kernel.h>
-#include <linux/firmware.h>
 #include <linux/of_device.h>
 #include <linux/spi/spi.h>
-#include <linux/err.h>
-#include <linux/debugfs.h>
-#include <linux/iio/buffer-dma.h>
-#include <linux/of.h>
-#include <linux/iio/iio.h>
 #include <linux/iio/sysfs.h>
-#include <linux/iio/buffer.h>
 #include "adar300x.h"
 
 #define ADAR300x_REG_SPI_CONFIG			0x00
@@ -46,9 +37,6 @@
 #define ADAR300x_REG_MEM_SEQPTR3_START		0x1D
 #define ADAR300x_REG_MEM_SEQPTR3_STOP		0x1E
 #define ADAR300x_REG_ADC_CONTROL		0x20
-
-#define ADAR300x_REG_ADC_CONTROL2_START		BIT(0)
-#define ADAR300x_REG_ADC_CONTROL2_END_CONV(x)	FIELD_GET(0x10, x)
 #define ADAR300x_REG_ADC_CONTROL2		0x21
 #define ADAR300x_REG_ADC_DATA_OUT		0x22
 #define ADAR300x_REG_DAC_DATA_MSB		0x23
@@ -138,6 +126,14 @@
 #define ADAR300x_SPI_CONFIG_BIG_ENDIAN	BIT(2)
 #define ADAR300x_SPI_CONFIG_RESET	BIT(0)
 
+/* ADAR300x_REG_ADC_CONTROL */
+#define ADAR300x_REG_ADC_CONTROL_RESET		BIT(7)
+#define ADAR300x_REG_ADC_CONTROL_MUX_SEL_MSK	GENMASK(2, 0)
+
+/* ADAR300x_REG_ADC_CONTROL2 */
+#define ADAR300x_REG_ADC_CONTROL2_START		BIT(0)
+#define ADAR300x_REG_ADC_CONTROL2_END_CONV(x)	FIELD_GET(0x10, x)
+
 /* ADAR300x_REG_BEAMSTATE_MODE */
 #define ADAR300x_MODE0	0x03
 #define ADAR300x_MODE1	0x0C
@@ -148,9 +144,6 @@
 #define ADAR300x_SPI_ADDR_MSK		GENMASK(13, 10)
 #define ADAR300x_SPI_ADDR(x)		FIELD_PREP(ADAR300x_SPI_ADDR_MSK, x)
 
-#define ADAR300x_BEAMS_PER_DEVICE	4
-#define ADAR300x_ELEMENTS_PER_BEAM	4
-#define ADAR300x_CHANNELS_PER_BEAM	8
 #define ADAR300x_PACKED_BEAMSTATE_LEN	6	/* bytes */
 #define ADAR300x_UNPACKED_BEAMSTATE_LEN	8	/* bytes */
 #define ADAR300x_MAX_RAM_STATES	64
@@ -277,15 +270,20 @@ static int adar300x_adc_setup(struct adar300x_state *st, enum adar300x_ADC_sel s
 {
 	int ret;
 
-	ret = adar300x_reg_update(st, ADAR300x_REG_ADC_CONTROL, 0x80, 0x80);
+	ret = adar300x_reg_update(st, ADAR300x_REG_ADC_CONTROL,
+				  ADAR300x_REG_ADC_CONTROL_RESET,
+				  ADAR300x_REG_ADC_CONTROL_RESET);
 	if (ret < 0)
 		return ret;
 
-	ret = adar300x_reg_update(st, ADAR300x_REG_ADC_CONTROL, 0x80, 0x00);
+	ret = adar300x_reg_update(st, ADAR300x_REG_ADC_CONTROL,
+				  ADAR300x_REG_ADC_CONTROL_RESET,
+				  0x00);
 	if (ret < 0)
 		return ret;
 
-	return adar300x_reg_update(st, ADAR300x_REG_ADC_CONTROL, 0x03, sel);
+	return adar300x_reg_update(st, ADAR300x_REG_ADC_CONTROL,
+				   ADAR300x_REG_ADC_CONTROL_MUX_SEL_MSK, sel);
 }
 
 static int adar300x_set_page(struct adar300x_state *st, enum adar300x_pages page)
@@ -293,7 +291,8 @@ static int adar300x_set_page(struct adar300x_state *st, enum adar300x_pages page
 	return adar300x_reg_update(st, ADAR300x_REG_ADDRESS_PAGE, ADAR300x_ADDRESS_PAGE_MASK, page);
 }
 
-static int adar300x_ram_read(struct adar300x_state *st, enum adar300x_pages page, u16 addr, char *data)
+static int adar300x_ram_read(struct adar300x_state *st,
+			     enum adar300x_pages page, u16 addr, char *data)
 {
 	u32 val;
 	int ret;
@@ -306,7 +305,7 @@ static int adar300x_ram_read(struct adar300x_state *st, enum adar300x_pages page
 	if (ret < 0)
 		return ret;
 
-	/* Second read for valid data */
+	/* Second read necessary for valid data */
 	ret = adar300x_reg_read(st, addr, &val);
 	if (ret < 0)
 		return ret;
@@ -316,7 +315,8 @@ static int adar300x_ram_read(struct adar300x_state *st, enum adar300x_pages page
 	return 0;
 }
 
-static enum adar300x_beamstate_mode_ctrl adar300x_get_bem(struct adar300x_state *st, struct iio_chan_spec const *chan)
+static enum adar300x_beamstate_mode_ctrl adar300x_get_bem(struct adar300x_state *st,
+							  struct iio_chan_spec const *chan)
 {
 	if (st->chip_info->chip_id == ID_ADAR3003)
 		return chan->address / ADAR300x_ELEMENTS_PER_BEAM;
@@ -361,13 +361,14 @@ static void adar300x_pack_data(char *packed, const char *unpacked, int unpacked_
 	}
 }
 
-static int adar300x_set_fifo_value(struct iio_dev *indio_dev, struct iio_chan_spec const *chan, u32 val)
+static int adar300x_set_fifo_value(struct iio_dev *indio_dev,
+				   struct iio_chan_spec const *chan, u32 val)
 {
 	struct adar300x_state *st = iio_priv(indio_dev);
 	enum adar300x_beamstate_mode_ctrl beam;
 	char packed[ADAR300x_PACKED_BEAMSTATE_LEN];
-	int ret, i;
 	u16 addr, element;
+	int ret, i;
 
 	beam = adar300x_get_bem(st, chan);
 	element = chan->address % st->chip_info->unpacked_beamst_len;
