@@ -179,9 +179,27 @@
 			adi,axi-dds-default-scale = <0>;
 		};
 
-		mwipcore@43c00000 {
-			compatible = "mathworks,mwipcore-axi4lite-v1.00";
-			reg = <0x43c00000 0xffff>;
+		generic-reg@43c00004 {
+			compatible = "generic-reg";
+			id = "last_edge_latch0";
+			reg = <0x43c00004 0x4>;
+		};
+		generic-reg@43c00008 {
+			compatible = "generic-reg";
+			id = "last_edge_latch1";
+			reg = <0x43c00008 0x4>;
+		};
+		generic-reg@43c0000c {
+			compatible = "generic-reg";
+			id = "sample_count";
+			reg = <0x43c0000c 0x4>;
+		};
+		gpio: gpio@41200000 {
+			compatible = "xlnx,xps-gpio-1.00.a";
+			reg = <0x41200000 0x1000>;
+			#gpio-cells = <2>;
+			gpio-controller;
+			xlnx,gpio-width = <8>;
 		};
 	};
 };

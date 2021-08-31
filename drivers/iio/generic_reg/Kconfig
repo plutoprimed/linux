@@ -1,0 +1,9 @@
+menu "IIO generic register driver"
+	depends on IIO
+
+config IIO_GENERIC_REG
+	tristate "Generic register driver"
+	help
+	  Driver.
+
+endmenu
